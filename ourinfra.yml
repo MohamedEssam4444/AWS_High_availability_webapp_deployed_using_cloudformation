@@ -1,0 +1,271 @@
+Parameters:
+
+    EnvironmentName:
+        Description: An environment name that will be prefixed to resource names
+        Type: String
+
+    VpcCIDR: 
+        Description: Please enter the IP range (CIDR notation) for this VPC
+        Type: String
+        
+
+    PublicSubnet1CIDR:
+        Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+        Type: String
+        
+
+    PublicSubnet2CIDR:
+        Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+        Type: String
+        
+
+    PrivateSubnet1CIDR:
+        Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
+        Type: String
+        
+
+    PrivateSubnet2CIDR:
+        Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
+        Type: String
+        
+Resources:
+#include anyname of resource , type of it , properties,tags
+
+    VPC:
+        Type: AWS::EC2::VPC
+        Properties:
+            CidrBlock: !Ref VpcCIDR #reference to parameter
+            EnableDnsHostnames: true
+            Tags: 
+                - Key: Name #here u have a tage called name = udacity project , this will be applied to the rest of the resources instead of retyping 
+                  Value: !Ref EnvironmentName
+#when we create internet gateway it will tell u its not associated to any vpcs so u need t create another resource it associate that internet gateway u created with vpc 
+    InternetGateway:
+        Type: AWS::EC2::InternetGateway
+        Properties:
+            Tags:
+                - Key: Name
+                  Value: !Ref EnvironmentName
+            
+    InternetGatewayAttachment:
+        Type: AWS::EC2::VPCGatewayAttachment
+        Properties:
+            InternetGatewayId: !Ref InternetGateway #refer to g/w just created
+            VpcId: !Ref VPC # refer to vpc and get form it vpc id to know which vpc you are associated with
+    
+    PublicSubnet1: 
+        Type: AWS::EC2::Subnet # all subnets have same type
+        Properties:
+            VpcId: !Ref VPC #cloudformation needs to know where to deploy this so should ref vpc
+            AvailabilityZone: !Select [ 0, !GetAZs '' ] #select takes a value from a list of values u provide , in this case list of values contain also a fn getazs that get u a list of av zones that are available to u in this particular geo area , the value 0 mean first zone(for ex us-west-2 central 1) and the values one means 2nd zone or 2nd choice will be 2nd av zone , the target here is to make each one in sep av zone 
+            CidrBlock: !Ref PublicSubnet1CIDR #cidrblock should be a subset of the overall vpc
+            MapPublicIpOnLaunch: true #when u deploy a server is it aut gonna take a public ip or not
+            Tags: 
+                - Key: Name 
+                  Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
+
+    PublicSubnet2: 
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref VPC
+            AvailabilityZone: !Select [ 1, !GetAZs '' ]
+            CidrBlock: !Ref PublicSubnet2CIDR
+            MapPublicIpOnLaunch: true
+            Tags: 
+                - Key: Name 
+                  Value: !Sub ${EnvironmentName} Public Subnet (AZ2)
+
+    PrivateSubnet1: 
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref VPC
+            AvailabilityZone: !Select [ 0, !GetAZs '' ]
+            CidrBlock: !Ref PrivateSubnet1CIDR
+            MapPublicIpOnLaunch: false
+            Tags: 
+                - Key: Name 
+                  Value: !Sub ${EnvironmentName} Private Subnet (AZ1)
+
+    PrivateSubnet2: 
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref VPC
+            AvailabilityZone: !Select [ 1, !GetAZs '' ]
+            CidrBlock: !Ref PrivateSubnet2CIDR
+            MapPublicIpOnLaunch: false
+            Tags: 
+                - Key: Name 
+                  Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
+    
+#EIP for elastic ip its an ip allocation u make a request for ip and that ip then belongs to u so that public ip will never change even if there is server maintenance or anything an amazon will keep it for u 
+    NatGateway1EIP:
+        Type: AWS::EC2::EIP
+        DependsOn: InternetGatewayAttachment  # depends on like require in puppet , it depends on that resource in this case g/w , if that g/w is not created that resource will be kept on hold to tell cloud formation in which order to build things , once internet g/w is attached and properly working then it will do public ip allocation as public ip makes no sense if there is no wa to reach it 
+        Properties: 
+            Domain: vpc
+
+    NatGateway2EIP:
+        Type: AWS::EC2::EIP
+        DependsOn: InternetGatewayAttachment
+        Properties:
+            Domain: vpc
+
+    NatGateway1: 
+        Type: AWS::EC2::NatGateway
+        Properties: 
+            AllocationId: !GetAtt NatGateway1EIP.AllocationId
+            SubnetId: !Ref PublicSubnet1   # where do u wanna deploy this g/w , in this case will be pub subnet 1 
+
+    NatGateway2: 
+        Type: AWS::EC2::NatGateway
+        Properties:
+            AllocationId: !GetAtt NatGateway2EIP.AllocationId
+            SubnetId: !Ref PublicSubnet2
+
+    PublicRouteTable:
+        Type: AWS::EC2::RouteTable
+        Properties: 
+            VpcId: !Ref VPC   # attach pub route table to the vpc we made  
+            Tags: 
+                - Key: Name 
+                  Value: !Sub ${EnvironmentName} Public Routes #name it public routes
+
+    DefaultPublicRoute: 
+        Type: AWS::EC2::Route
+        DependsOn: InternetGatewayAttachment
+        Properties: 
+            RouteTableId: !Ref PublicRouteTable #means we attach this default rule to that route table w just made 
+            DestinationCidrBlock: 0.0.0.0/0 # if u route any traffic to the ip address (any ip) route it to the internet g/w (next line)
+            GatewayId: !Ref InternetGateway # get internet g/w id that we will route to any traffic from that ip (any ip 0.0.0.0)
+
+    PublicSubnet1RouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            RouteTableId: !Ref PublicRouteTable #to tell that rule we created to which subnet will be associated 
+            SubnetId: !Ref PublicSubnet1
+
+    PublicSubnet2RouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            RouteTableId: !Ref PublicRouteTable
+            SubnetId: !Ref PublicSubnet2
+    
+
+    PrivateRouteTable1:
+        Type: AWS::EC2::RouteTable
+        Properties: 
+            VpcId: !Ref VPC
+            Tags: 
+                - Key: Name 
+                  Value: !Sub ${EnvironmentName} Private Routes (AZ1)
+
+    DefaultPrivateRoute1:
+        Type: AWS::EC2::Route
+        Properties:
+            RouteTableId: !Ref PrivateRouteTable1
+            DestinationCidrBlock: 0.0.0.0/0 #create a rule associated with private route table 1 and tell when u route traffic to that ip(wildcard) send traffic to nat ip g/w , this will keep traffic within vpc of private subnets 
+            NatGatewayId: !Ref NatGateway1
+
+    PrivateSubnet1RouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            RouteTableId: !Ref PrivateRouteTable1
+            SubnetId: !Ref PrivateSubnet1
+
+    PrivateRouteTable2:
+        Type: AWS::EC2::RouteTable
+        Properties: 
+            VpcId: !Ref VPC
+            Tags: 
+                - Key: Name 
+                  Value: !Sub ${EnvironmentName} Private Routes (AZ2)
+
+    DefaultPrivateRoute2:
+        Type: AWS::EC2::Route
+        Properties:
+            RouteTableId: !Ref PrivateRouteTable2
+            DestinationCidrBlock: 0.0.0.0/0
+            NatGatewayId: !Ref NatGateway2
+
+    PrivateSubnet2RouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            RouteTableId: !Ref PrivateRouteTable2
+            SubnetId: !Ref PrivateSubnet2
+
+    # Secgp1LoadBalancer:
+    #     Type: AWS::EC2::SecurityGroup
+    #     Properties: 
+    #         VpcId: !Ref myVPC
+    #     GroupDescription: security gp to loadbalancer
+    #     SecurityGroupEgress: 
+    #         - IpProtocol: tcp
+    #           from port: 80
+    #           to port: 80
+    #           CidrIp: 0.0.0.0/0
+    # SecurityGroupIngress: 
+    #         - IpProtocol: tcp
+    #           from port: 80
+    #           to port: 80
+    #           CidrIp: 0.0.0.0/0
+    #     Tags: 
+    #         - Tag
+    #     VpcId: String
+    # Secgp2webserver:
+    #     Type: AWS::EC2::SecurityGroup
+    #     Properties: 
+    #         VpcId: !Ref myVPC
+    #     GroupDescription: String
+    #     GroupName: String
+    #     SecurityGroupEgress: 
+    #         - Egress
+    #     SecurityGroupIngress: 
+    #         - Ingress
+    #     Tags: 
+    #         - Tag
+    #     VpcId: String
+
+Outputs: 
+  #when ur run outputs here don't forget to change env name before u run it so no conflict happens
+# capture vpc id , store it in a variable to be able to use it later on other scripts
+    VPC: 
+        Description: A reference to the created VPC
+        Value: !Ref VPC #vpcid
+        Export:
+          Name: !Sub ${EnvironmentName}-VPCID # substitute here is used to tell that the name will be : udacity project(envname)-VPCID and will contain that vpcid we just referred to 2 lines eralier so it will have that name and store vpcid value
+
+    PublicSubnets:
+        Description: A list of the public subnets
+        Value: !Join [ ",", [ !Ref PublicSubnet1, !Ref PublicSubnet2 ]] # will be :the value of pubsubnet: value , the value of pubsubnet 2 : value so u get values of t pubsubnets and join them in a list
+        Export:
+          Name: !Sub ${EnvironmentName}-PUB-NETS
+
+    PrivateSubnets:
+        Description: A list of the private subnets
+        Value: !Join [ ",", [ !Ref PrivateSubnet1, !Ref PrivateSubnet2 ]]
+        Export:
+          Name: !Sub ${EnvironmentName}-PRIV-NETS
+
+    PublicSubnet1:
+        Description: A reference to the public subnet in the 1st Availability Zone
+        Value: !Ref PublicSubnet1
+        Export:
+          Name: !Sub ${EnvironmentName}-PUB1-SN
+
+    PublicSubnet2: 
+        Description: A reference to the public subnet in the 2nd Availability Zone
+        Value: !Ref PublicSubnet2
+        Export:
+          Name: !Sub ${EnvironmentName}-PUB2-SN
+
+    PrivateSubnet1:
+        Description: A reference to the private subnet in the 1st Availability Zone
+        Value: !Ref PrivateSubnet1
+        Export:
+          Name: !Sub ${EnvironmentName}-PRI1-SN
+
+    PrivateSubnet2: 
+        Description: A reference to the private subnet in the 2nd Availability Zone
+        Value: !Ref PrivateSubnet2
+        Export:
+          Name: !Sub ${EnvironmentName}-PRI2-SN

@@ -4,6 +4,10 @@ Run:
 1)create stack.sh and enter the variables of stack name and parametersfile and templatefile which will be ourinfra.yaml to build infrastructure 
 2)run update.sh and enter the templatefile variable to be high_availability_webapp.yaml to build autoscaling groups and loadbalancers in order to have a high availability webapp
 
+archeticture : 
+
+![aws infra soln](https://user-images.githubusercontent.com/68178003/100732047-e3087e00-33d4-11eb-82ed-8d2588f47dc1.jpeg)
+
 ![Screenshot from 2020-09-09 13-51-35](https://user-images.githubusercontent.com/68178003/100713622-3e2e7680-33bd-11eb-838c-8232832445df.png)
 
 ![Screenshot from 2020-09-09 14-41-52](https://user-images.githubusercontent.com/68178003/100713631-4090d080-33bd-11eb-8180-f2bafa2b20ec.png)

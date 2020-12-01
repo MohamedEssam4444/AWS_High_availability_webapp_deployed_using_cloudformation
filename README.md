@@ -1,5 +1,8 @@
 # AWS_High_availability_webapp_deployed_using_cloudformation
 Infrastructure as Code , deploy AWS High availability webapp using cloudformation
+Run:
+1)create stack.sh and enter the variables of stack name and parametersfile and templatefile which will be ourinfra.yaml to build infrastructure 
+2)run update.sh and enter the templatefile variable to be high_availability_webapp.yaml to build autoscaling groups and loadbalancers in order to have a high availability webapp
 
 ![Screenshot from 2020-09-09 13-51-35](https://user-images.githubusercontent.com/68178003/100713622-3e2e7680-33bd-11eb-838c-8232832445df.png)
 

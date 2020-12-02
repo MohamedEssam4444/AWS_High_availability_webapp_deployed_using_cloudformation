@@ -65,7 +65,7 @@ Resources:
         FromPort: 0
         ToPort: 65535
         CidrIp: 0.0.0.0/0
-  WebAppLaunchConfig:
+  WebAppLaunchConfig: # make configuration for the webapp autoscaling group nodes
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       UserData:
@@ -75,7 +75,7 @@ Resources:
           apt-get install apache2 -y
           systemctl start apache2.service
           cd /var/www/html
-          echo "Udacity Demo Web Server Running!" > index.html
+          echo "Udacity Demo Web Server Running!" > index.html # deploy apache app to cluster nodes 
       ImageId: ami-06d51e91cea0dac8d
       SecurityGroups:
       - Ref: WebServerSecGroup
@@ -95,12 +95,12 @@ Resources:
         Ref: WebAppLaunchConfig
       MinSize: '3'
       MaxSize: '5'
-      DesiredCapacity: '4'
+      DesiredCapacity: '4' # capacity of nodes is 4 which is the same as the one provided in the screenshots
       LaunchConfigurationName:
         !Ref WebAppLaunchConfig
-      HealthCheckGracePeriod: 300
-      MetricsCollection: 
-      - Granularity: "1Minute" #ec metric data will be available one minute interval
+      HealthCheckGracePeriod: 300 # wait 300 seconds before checking in case instance took long time loading
+      MetricsCollection: # monitoring the instance
+      - Granularity: "1Minute" #ec2 metric data will be available one minute interval
         Metrics: 
         - "GroupMinSize"
         - "GroupMaxSize"
@@ -108,7 +108,7 @@ Resources:
         - "GroupStandbyInstances"
         - "GroupPendingInstances"
       TargetGroupARNs:
-      - Ref: WebAppTargetGroup
+      - Ref: WebAppTargetGroup # to connect autoscaling with the target nodes
   WebAppLB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -123,12 +123,12 @@ Resources:
       DefaultActions:
       - Type: forward
         TargetGroupArn:
-          Ref: WebAppTargetGroup
+          Ref: WebAppTargetGroup # to connect loadbalancer with the target nodes and the autoscaling group
       LoadBalancerArn:
         Ref: WebAppLB
       Port: '80'
       Protocol: HTTP
-  ALBListenerRule:
+  ALBListenerRule: # to connect listener to the webapptarget nodes and therefore with the loadbalancer
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
       Actions:
@@ -170,7 +170,7 @@ Outputs:
     Export:
       Name: !Sub "${EnvironmentName}-WebAppLaunchConf"
   WebsiteURL:
-    Description: dns name preceded by http://
+    Description: dns name preceded by http:// # to make output of dns in the http:// format 
     Value: !Join 
       - ''
       - - 'http://'

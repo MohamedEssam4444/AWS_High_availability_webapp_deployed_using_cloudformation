@@ -193,38 +193,6 @@ Resources:
             RouteTableId: !Ref PrivateRouteTable2
             SubnetId: !Ref PrivateSubnet2
 
-    # Secgp1LoadBalancer:
-    #     Type: AWS::EC2::SecurityGroup
-    #     Properties: 
-    #         VpcId: !Ref myVPC
-    #     GroupDescription: security gp to loadbalancer
-    #     SecurityGroupEgress: 
-    #         - IpProtocol: tcp
-    #           from port: 80
-    #           to port: 80
-    #           CidrIp: 0.0.0.0/0
-    # SecurityGroupIngress: 
-    #         - IpProtocol: tcp
-    #           from port: 80
-    #           to port: 80
-    #           CidrIp: 0.0.0.0/0
-    #     Tags: 
-    #         - Tag
-    #     VpcId: String
-    # Secgp2webserver:
-    #     Type: AWS::EC2::SecurityGroup
-    #     Properties: 
-    #         VpcId: !Ref myVPC
-    #     GroupDescription: String
-    #     GroupName: String
-    #     SecurityGroupEgress: 
-    #         - Egress
-    #     SecurityGroupIngress: 
-    #         - Ingress
-    #     Tags: 
-    #         - Tag
-    #     VpcId: String
-
 Outputs: 
   #when ur run outputs here don't forget to change env name before u run it so no conflict happens
 # capture vpc id , store it in a variable to be able to use it later on other scripts
